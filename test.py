@@ -106,31 +106,39 @@ def splitData(aRange, train, test):
            test_grid.to_csv('chunks/test/' + name + '.csv', index=False)
    print("Elapsed time for splitting: %s seconds" % (time.time() - start_time))
 
-def saveModels(aRange):
+def trainTestModels(aRange):
    #print 'hello'
    total_iterations = sum(1 for _ in aRange['x']) * sum(1 for _ in aRange['y'])
    print(total_iterations)
    itera = 0
    for x_min, x_max in aRange['x']:
-       start_time_row = time.time()
-       for y_min, y_max in aRange['y']: 
+       for y_min, y_max in aRange['y']:
+           start_time = time.time() 
            name = 'x_' + str(x_min) + '_' + str(x_max) + '_y_' + str(y_min) + '_' + str(y_max)
-           #test_grid = pd.read_csv('chunks/test/' + name + '.csv')
-           if os.path.exists('chunks/models/GBC_' + name + '.pkl'):
-               print 'model already there, skipped'
-           else:
-               print 'training ' + name
-               train_grid = pd.read_csv('chunks/train/' + name + '.csv')
-               X_train_grid = train_grid[features]
-               y_train_grid = train_grid[['place_id']].values.ravel()
-               print (X_train_grid.shape)
-               #print (test_grid.shape)
-               #clf = RandomForestClassifier(n_estimators = 300, n_jobs = -1)
-               clf = GradientBoostingClassifier()
-               clf.fit(X_train_grid, y_train_grid) 
-               # save the classifier
-               with open('chunks/models/GBC_' + name + '.pkl', 'wb') as fid:
-                   cPickle.dump(clf, fid)    
+           print 'training ' + name
+           train_grid = pd.read_csv('chunks/train/' + name + '.csv')
+           test_grid = pd.read_csv('chunks/test/' + name + '.csv') 
+           X_train_grid = train_grid[features]
+           y_train_grid = train_grid[['place_id']].values.ravel()
+           print (X_train_grid.shape)
+           #print (test_grid.shape)
+           clf = RandomForestClassifier(n_estimators = 300, n_jobs = -1)
+           #clf = GradientBoostingClassifier()
+          
+           print 'training the model'
+           clf.fit(X_train_grid, y_train_grid) 
+           print("finished training: %s seconds" % (time.time() - start_time))
+           if not test_grid.empty:
+              start_time = time.time() 
+              preds = predictY(test_grid, clf)
+              print("Finished predicting: %s seconds" % (time.time() - start_time))
+              #preds.to_csv(filename, mode='a', header=False, index=False)
+              preds.to_csv('chunks/results/' + name + '.csv', mode='a', index=False)
+           else: 
+              print('empty dataset')
+           itera = itera + 1
+           print(itera, " out of ", total_iterations)
+           
 
 def mlStep(aRange):
    #print 'hello'
@@ -187,7 +195,8 @@ aRange = calcRange(size, step)
 
 
 #splitData(aRange, train, test)
-saveModels(aRange)
+#saveModels(aRange)
+trainTestModels(aRange)
 #mlStep(aRange)
 #df = pd.read_csv('submission.csv')
 #print df.shape
